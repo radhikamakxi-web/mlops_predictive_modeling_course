@@ -47,10 +47,11 @@ def select_device(name: str) -> torch.device:
     return torch.device(name)
 
 
-def run_epoch(model, loader, criterion, device, optimizer=None, loss_function="cross_entropy"):
+def run_epoch(model, loader, criterion, device, optimizer=None, loss_function="cross_entropy", collect_metrics=False):
     training = optimizer is not None
     model.train(training)
     total_loss, correct, count = 0.0, 0, 0
+    targets, predictions = [], [] if collect_metrics else (None, None)
     with torch.set_grad_enabled(training):
         for images, labels in loader:
             images, labels = images.to(device), labels.to(device)
@@ -66,8 +67,42 @@ def run_epoch(model, loader, criterion, device, optimizer=None, loss_function="c
                 optimizer.step()
             count += labels.size(0)
             total_loss += loss.item() * labels.size(0)
-            correct += (logits.argmax(dim=1) == labels).sum().item()
+            batch_predictions = logits.argmax(dim=1)
+            correct += (batch_predictions == labels).sum().item()
+            if collect_metrics:
+                targets.append(labels.detach().cpu())
+                predictions.append(batch_predictions.detach().cpu())
+    if collect_metrics:
+        target_tensor = torch.cat(targets)
+        prediction_tensor = torch.cat(predictions)
+        num_classes = max(int(target_tensor.max().item()) + 1, int(prediction_tensor.max().item()) + 1)
+        confusion = torch.zeros((num_classes, num_classes), dtype=torch.long)
+        for actual, predicted in zip(target_tensor.tolist(), prediction_tensor.tolist()):
+            confusion[actual, predicted] += 1
+        precision_values, recall_values, f1_values = [], [], []
+        for class_index in range(num_classes):
+            true_positive = confusion[class_index, class_index].item()
+            false_positive = confusion[:, class_index].sum().item() - true_positive
+            false_negative = confusion[class_index, :].sum().item() - true_positive
+            precision = true_positive / (true_positive + false_positive) if (true_positive + false_positive) else 0.0
+            recall = true_positive / (true_positive + false_negative) if (true_positive + false_negative) else 0.0
+            f1 = 2.0 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+            precision_values.append(precision)
+            recall_values.append(recall)
+            f1_values.append(f1)
+        metrics = {
+            "precision_macro": float(np.mean(precision_values)),
+            "recall_macro": float(np.mean(recall_values)),
+            "f1_macro": float(np.mean(f1_values)),
+            "confusion_matrix": confusion.tolist(),
+        }
+        return total_loss / count, correct / count, metrics
     return total_loss / count, correct / count
+
+
+def compute_classification_metrics(model, loader, criterion, device, loss_function="cross_entropy"):
+    """Compatibility helper; metrics are now computed directly in `run_epoch(..., collect_metrics=True)`."""
+    raise RuntimeError("Use run_epoch(..., collect_metrics=True) instead of compute_classification_metrics().")
 
 
 def train(config: TrainingConfig, settings: Settings) -> dict:
@@ -112,13 +147,31 @@ def train(config: TrainingConfig, settings: Settings) -> dict:
             train_loss, train_accuracy = run_epoch(
                 model, train_loader, criterion, device, optimizer, config.loss_function,
             )
-            val_loss, val_accuracy = run_epoch(
+            val_loss, val_accuracy, val_metrics = run_epoch(
                 model, val_loader, criterion, device, loss_function=config.loss_function,
+                collect_metrics=True,
             )
-            mlflow.log_metrics({"train_loss": train_loss, "train_accuracy": train_accuracy,
-                                "val_loss": val_loss, "val_accuracy": val_accuracy}, step=epoch)
-            LOGGER.info("Epoch %d/%d train_loss=%.4f val_loss=%.4f val_accuracy=%.4f",
-                        epoch, config.epochs, train_loss, val_loss, val_accuracy)
+            mlflow.log_metrics({
+                "train_loss": train_loss,
+                "train_accuracy": train_accuracy,
+                "val_loss": val_loss,
+                "val_accuracy": val_accuracy,
+                "val_precision_macro": val_metrics["precision_macro"],
+                "val_recall_macro": val_metrics["recall_macro"],
+                "val_f1_macro": val_metrics["f1_macro"],
+            }, step=epoch)
+            LOGGER.info(
+                "Epoch %d/%d train_loss=%.4f val_loss=%.4f val_accuracy=%.4f "
+                "precision_macro=%.4f recall_macro=%.4f f1_macro=%.4f",
+                epoch,
+                config.epochs,
+                train_loss,
+                val_loss,
+                val_accuracy,
+                val_metrics["precision_macro"],
+                val_metrics["recall_macro"],
+                val_metrics["f1_macro"],
+            )
             if val_accuracy > best_accuracy:
                 best_accuracy, best_epoch = val_accuracy, epoch
                 torch.save({
@@ -127,21 +180,35 @@ def train(config: TrainingConfig, settings: Settings) -> dict:
                     "class_names": list(CLASS_NAMES), "preprocessing": PREPROCESSING,
                     "run_id": run_id, "config": actual_config,
                     "validation_accuracy": best_accuracy, "epoch": epoch,
+                    "validation_precision_macro": val_metrics["precision_macro"],
+                    "validation_recall_macro": val_metrics["recall_macro"],
+                    "validation_f1_macro": val_metrics["f1_macro"],
+                    "confusion_matrix": val_metrics["confusion_matrix"],
                 }, checkpoint_path)
 
-        # Re-evaluate the exact checkpoint that will be served, not the last epoch's weights.
         checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
         model.load_state_dict(checkpoint["state_dict"])
-        final_loss, final_accuracy = run_epoch(
+        final_loss, final_accuracy, final_metrics = run_epoch(
             model, val_loader, criterion, device, loss_function=config.loss_function,
+            collect_metrics=True,
         )
-        mlflow.log_metrics({"final_validation_loss": final_loss,
-                            "final_validation_accuracy": final_accuracy, "best_epoch": best_epoch})
+        mlflow.log_metrics({
+            "final_validation_loss": final_loss,
+            "final_validation_accuracy": final_accuracy,
+            "final_validation_precision_macro": final_metrics["precision_macro"],
+            "final_validation_recall_macro": final_metrics["recall_macro"],
+            "final_validation_f1_macro": final_metrics["f1_macro"],
+            "best_epoch": best_epoch,
+        })
         object_key = f"model/{run_id}/model.pt"
         payload = {
             "status": "completed", "run_id": run_id,
             "model_bucket": settings.minio_bucket, "model_object_key": object_key,
             "validation_accuracy": final_accuracy, "best_epoch": best_epoch,
+            "validation_precision_macro": final_metrics["precision_macro"],
+            "validation_recall_macro": final_metrics["recall_macro"],
+            "validation_f1_macro": final_metrics["f1_macro"],
+            "confusion_matrix": final_metrics["confusion_matrix"],
             "sha256": hashlib.sha256(checkpoint_path.read_bytes()).hexdigest(),
             "completed_at": datetime.now(timezone.utc).isoformat(),
         }

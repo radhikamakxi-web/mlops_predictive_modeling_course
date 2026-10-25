@@ -26,7 +26,7 @@ This project trains a LeNet-5-style classifier on Fashion-MNIST, logs the run to
    ```
 3. Copy environment variables:
    ```bash
-   cp .env.example .env
+   cp .env.example .env.local
    ```
 4. Start local services:
    ```bash
@@ -102,7 +102,7 @@ All provided tests are designed to mock external services rather than download d
 
 - Training and inference are intentionally separate.
 - The bucket spelling `fashion-minst-bucket` is preserved intentionally per the assignment.
-- Credentials are never committed to source control; use `.env` and environment variables in deployment.
+- Credentials are never committed to source control; use `.env.local` and environment variables in deployment.
 
 ## Docker login credentials
 

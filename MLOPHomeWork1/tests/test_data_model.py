@@ -151,3 +151,17 @@ def test_split_requires_training_samples(monkeypatch):
     monkeypatch.setattr(data.datasets, "FashionMNIST", OneImageDataset)
     with pytest.raises(ValueError, match="no training samples"):
         data.make_loaders(TrainingConfig())
+
+
+def test_palette_png_with_transparency_is_flattened_to_rgb():
+    palette = Image.new("P", (2, 2))
+    palette.putpalette([0, 0, 0, 255, 0, 0] + [0, 0, 0] * 254)
+    palette.putdata([0, 1, 1, 0])
+    rgb = palette.convert("RGB")
+    alpha = Image.new("L", (2, 2), 128)
+    rgba = Image.merge("RGBA", (rgb.getchannel("R"), rgb.getchannel("G"), rgb.getchannel("B"), alpha))
+    result = data.preprocess_image(encode(rgba, "PNG"))
+    expected = data.IMAGE_TRANSFORM(
+        Image.alpha_composite(Image.new("RGBA", rgba.size, (0, 0, 0, 255)), rgba).convert("RGB")
+    ).unsqueeze(0)
+    torch.testing.assert_close(result, expected)

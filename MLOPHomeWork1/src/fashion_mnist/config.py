@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     mlflow_tracking_uri: str = "http://localhost:5001"
-    minio_endpoint: str = "localhost:9000"
+    minio_endpoint: str = "localhost:9001"
     minio_access_key: str = ""
     minio_secret_key: SecretStr = SecretStr("")
     minio_secure: bool = False

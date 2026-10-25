@@ -75,3 +75,25 @@ def test_large_upload():
 def test_missing_upload():
     client, _ = make_client()
     assert client.post("/predict").status_code == 422
+
+
+def test_invalid_image_bytes_return_useful_error():
+    client, predictor = make_client()
+    response = client.post(
+        "/predict",
+        files={"file": ("broken.png", b"not an image", "image/png")},
+    )
+    assert response.status_code == 400
+    assert "Invalid" in response.json()["detail"]
+    predictor.predict.assert_not_called()
+
+
+def test_api_rejects_oversized_file_before_model_loading():
+    client, predictor = make_client(limit=5)
+    response = client.post(
+        "/predict",
+        files={"file": ("large.png", image_bytes(), "image/png")},
+    )
+    assert response.status_code == 413
+    assert "upload size limit" in response.json()["detail"].lower()
+    predictor.predict.assert_not_called()

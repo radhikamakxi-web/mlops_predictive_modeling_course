@@ -2,9 +2,6 @@ FROM python:3.12-slim
 
 ARG TARGETARCH=amd64
 
-ENV MINIO_ROOT_USER=minioadmin \
-    MINIO_ROOT_PASSWORD=minioadmin
-
 WORKDIR /app
 
 RUN apt-get update \
