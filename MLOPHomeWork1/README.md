@@ -49,6 +49,7 @@ docker compose up -d
 ```
 
 This starts:
+
 - MLflow UI at `http://localhost:5000`
 - MinIO console at `http://localhost:9001`
 - FastAPI at `http://localhost:8000`
@@ -58,7 +59,7 @@ This starts:
 To train a model in the Docker stack:
 
 ```bash
-docker compose run --rm train
+docker compose run --rm --no-deps train python -m fashion_mnist.train --config configs/train.toml
 ```
 
 The training pipeline writes a versioned model artifact to `fashion-minst-bucket/model/<run-id>/model.pt` and publishes the latest manifest at `model/latest.json`.
