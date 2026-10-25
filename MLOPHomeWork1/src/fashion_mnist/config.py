@@ -14,7 +14,7 @@ class TrainingConfig(BaseModel):
     epochs: int = Field(default=5, ge=1)
     batch_size: int = Field(default=128, ge=1)
     learning_rate: float = Field(default=0.01, gt=0)
-    optimizer: Literal["adam", "sgd"] = "sgd"
+    optimizer: Literal["adam", "sgd"] = "adam"
     loss_function: Literal["cross_entropy", "nll_loss"] = "cross_entropy"
     seed: int = Field(default=42, ge=0, le=2**32 - 1)
     validation_split: float = Field(default=0.1, gt=0, lt=1)
