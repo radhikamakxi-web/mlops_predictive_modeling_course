@@ -1,0 +1,16 @@
+# Real Fashion-MNIST smoke run; not intended to produce a high-accuracy model.
+[training]
+epochs = 1
+batch_size = 64
+learning_rate = 0.001
+optimizer = "adam"
+loss_function = "cross_entropy"
+seed = 42
+validation_split = 0.1
+device = "cpu"
+torch_threads = 2
+max_train_samples = 1024
+max_val_samples = 256
+data_dir = "data"
+output_dir = "outputs"
+experiment_name = "fashion-mnist-smoke"

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fashion-mnist-mlops"
+version = "1.0.0"
+description = "Train, track, store, and serve a Fashion-MNIST LeNet classifier"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "torch>=2.6,<3", "torchvision>=0.21,<1", "numpy>=1.26,<3",
+  "Pillow>=11,<13", "mlflow>=2.20,<4", "minio>=7.2,<8",
+  "boto3>=1.35,<2", "SQLAlchemy>=1.4,<2.0",
+  "pydantic>=2.10,<3", "pydantic-settings>=2.7,<3",
+  "fastapi>=0.115,<1", "uvicorn[standard]>=0.34,<1",
+  "python-multipart>=0.0.20,<1", "requests>=2.32,<3",
+  "streamlit>=1.42,<2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3,<10", "httpx>=0.28,<1", "ruff>=0.9,<1"]
+
+[project.scripts]
+fashion-train = "fashion_mnist.train:main"
+fashion-export-samples = "fashion_mnist.export_samples:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

@@ -1,0 +1,16 @@
+[training]
+epochs = 5
+batch_size = 128
+learning_rate = 0.001
+optimizer = "adam" # adam or sgd
+loss_function = "cross_entropy" # cross_entropy or nll_loss
+seed = 42
+validation_split = 0.1
+momentum = 0.9 # used only by SGD
+weight_decay = 0.0
+num_workers = 0
+device = "cpu" # cpu, cuda, mps, auto
+torch_threads = 2
+data_dir = "data"
+output_dir = "outputs"
+experiment_name = "fashion-mnist-lenet"
