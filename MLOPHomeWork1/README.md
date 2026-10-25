@@ -106,8 +106,8 @@ A typical local setup may include values such as:
 ```bash
 export MLFLOW_TRACKING_URI=http://localhost:5001
 export MINIO_ENDPOINT=localhost:9003
-export MINIO_ACCESS_KEY=minioadmin
-export MINIO_SECRET_KEY=minioadmin
+export MINIO_ACCESS_KEY=XXX
+export MINIO_SECRET_KEY=XXX
 export MINIO_BUCKET=fashion-minst-bucket
 export WEBHOOK_URL=http://localhost:8003/webhook
 ```
