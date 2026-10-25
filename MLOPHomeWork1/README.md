@@ -16,7 +16,7 @@ This project trains a Fashion-MNIST classifier with a LeNet-style CNN, tracks th
 
 - Docker Desktop or Docker Engine
 - Python 3.11 or newer
-- git
+
 
 ## Local development setup
 
