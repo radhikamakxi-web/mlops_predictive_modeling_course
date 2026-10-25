@@ -125,7 +125,7 @@ For local Docker-based execution, the Compose file already sets these values for
 
 - Endpoint: localhost:9003
 - Console: http://localhost:9004
-- Default credentials: `minioadmin` / `minioadmin`
+- Default credentials: `XXXX` / `XXXX`
 - Required bucket: `fashion-minst-bucket`
 - Artifact pattern: `model/<mlflow-run-id>/model.pt`
 - Latest manifest: `model/latest.json`
